@@ -1,76 +1,53 @@
 {
-  "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": {
-    "siteName": {
-      "type": "string"
-    },
-    "hostingPlanName": {
-      "type": "string"
-    },
-    "siteLocation": {
-      "type": "string"
-    },
-    "repoUrl": {
-      "type": "string"
-    },
-    "branch": {
-      "type": "string"
-    }
+  "variables": {
+    "hostingPlanName": "[replace(resourceGroup().name,'.','')]",
+    "siteName": "[concat(toLower(variables('hostingPlanName')), uniqueString(resourceGroup().id))]",
+    "sku": "s1",
+    "workerSize": "0",
+    "repoURL": "https://github.com/4lowtherabbit/LabSNAT.git",
+    "branch": "master"
   },
   "resources": [
     {
-      "apiVersion": "2014-06-01",
-      "name": "[parameters('hostingPlanName')]",
-      "type": "Microsoft.Web/serverFarms",
-      "location": "[parameters('siteLocation')]",
+      "apiVersion": "2015-08-01",
+      "name": "[variables('hostingPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "[variables('sku')]",
+        "capacity": "[variables('workerSize')]"
+      },
       "properties": {
-        "name": "[parameters('hostingPlanName')]",
-        "sku": "Standard",
-        "workerSize": "0",
-        "numberOfWorkers": 1
+        "name": "[variables('hostingPlanName')]"
       }
     },
     {
-      "apiVersion": "2018-02-01",
-      "name": "[parameters('siteName')]",
-      "type": "Microsoft.Web/Sites",
-      "location": "[parameters('siteLocation')]",
+      "apiVersion": "2015-08-01",
+      "name": "[variables('siteName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[concat('Microsoft.Web/serverFarms/', parameters('hostingPlanName'))]"
+        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
       ],
-      "tags": {
-        "[concat('hidden-related:', resourceGroup().id, '/providers/Microsoft.Web/serverfarms/', parameters('hostingPlanName'))]": "empty"
-      },
       "properties": {
-        "name": "[parameters('siteName')]",
-        "serverFarm": null,
-		"serverFarmId": "[resourceId('Microsoft.Web/serverFarms', parameters('hostingPlanName'))]",
+        "serverFarmId": "[variables('hostingPlanName')]",
+        "siteConfig": {
+          "alwaysOn": true
+        }
       },
       "resources": [
         {
-          "apiVersion": "2018-02-01",
-          "type": "config",
-          "name": "web",
-          "dependsOn": [
-            "[concat('Microsoft.Web/Sites/', parameters('siteName'))]"
-          ],
-          "properties": {
-            "alwaysOn": true,
-            "IsManualIntegration": true
-          }
-        },
-        {
-          "apiVersion": "2018-02-01",
+          "apiVersion": "2015-08-01",
           "name": "web",
           "type": "sourcecontrols",
           "dependsOn": [
-            "[resourceId('Microsoft.Web/Sites', parameters('siteName'))]",
-            "[concat('Microsoft.Web/Sites/', parameters('siteName'), '/config/web')]"
+            "[resourceId('Microsoft.Web/Sites', variables('siteName'))]"
           ],
           "properties": {
-            "RepoUrl": "[parameters('repoUrl')]",
-            "branch": "[parameters('branch')]",
+            "RepoUrl": "[variables('repoURL')]",
+            "branch": "[variables('branch')]",
             "IsManualIntegration": true
           }
         }
